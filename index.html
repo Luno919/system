@@ -42,7 +42,9 @@
 
 <script>
 /* ------------------ Configuration ------------------ */
-let tasks = [
+
+// Default tasks
+const defaultTasks = [
     { name: "Task 1", priority: "high", done: false },
     { name: "Task 2", priority: "low", done: false },
     { name: "Task 3", priority: "high", done: false },
@@ -50,6 +52,9 @@ let tasks = [
     { name: "Task 5", priority: "high", done: false },
     { name: "Task 6", priority: "low", done: false }
 ];
+
+// Load tasks from localStorage or use defaults
+let tasks = JSON.parse(localStorage.getItem("tasks")) || defaultTasks;
 
 // Load totalScore from localStorage
 let totalScore = parseInt(localStorage.getItem("totalScore")) || 0;
@@ -99,8 +104,10 @@ function updateUI() {
     const prevLevelScore = level > 1 ? getScoreForNextLevel(level-1) : 0;
     const progressPercent = ((totalScore - prevLevelScore)/ (nextLevelScore - prevLevelScore)) * 100;
     document.getElementById("progressFill").style.width = progressPercent + "%";
-    // Save score in localStorage
+    
+    // Save score and tasks in localStorage
     localStorage.setItem("totalScore", totalScore);
+    localStorage.setItem("tasks", JSON.stringify(tasks));
 }
 
 /* ------------------ Task Handling ------------------ */
@@ -110,12 +117,10 @@ function toggleTask(index) {
     // Adjust score immediately based on task toggle
     if(task.done) {
         // Undoing a done task -> subtract points
-        if(task.priority === "high") totalScore -= 20;
-        else totalScore -= 10;
+        totalScore -= task.priority === "high" ? 20 : 10;
     } else {
         // Marking as done -> add points
-        if(task.priority === "high") totalScore += 20;
-        else totalScore += 10;
+        totalScore += task.priority === "high" ? 20 : 10;
     }
 
     task.done = !task.done;
@@ -148,10 +153,9 @@ function dailyReset() {
         // Reset undone tasks -> subtract points
         tasks.forEach(task => {
             if(!task.done) {
-                if(task.priority === "high") totalScore -= 10;
-                else totalScore -= 5;
+                totalScore -= task.priority === "high" ? 10 : 5;
             }
-            task.done = false;
+            task.done = false; // reset task
         });
 
         localStorage.setItem("lastReset", now);
@@ -160,7 +164,7 @@ function dailyReset() {
     }
 }
 
-// Check every minute
+// Check every minute if a new day has started
 setInterval(dailyReset, 60 * 1000);
 
 /* ------------------ Initialization ------------------ */
@@ -169,4 +173,3 @@ updateUI();
 </script>
 </body>
 </html>
-
