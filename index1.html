@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyberpunk Task Tracker</title>
+<style>
+    body {
+        background: #0d0d0d;
+        color: #00ffea;
+        font-family: 'Courier New', monospace;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+    }
+    h1, h2 { text-align: center; }
+    .task-list { display: flex; flex-direction: column; gap: 10px; width: 400px; margin-top: 20px; }
+    .task { display: flex; justify-content: space-between; background: rgba(0,255,234,0.1); padding: 10px 20px; border-radius: 10px; border: 1px solid #00ffea; transition: 0.3s; }
+    .task.done { text-decoration: line-through; opacity: 0.6; }
+    .status-btn { background: #00ffea; border: none; padding: 5px 10px; cursor: pointer; border-radius: 5px; color: #0d0d0d; font-weight: bold; }
+    .status-btn:hover { background: #00ccaa; }
+    .info { margin-top: 20px; text-align: center; }
+    .progress-bar { width: 400px; height: 20px; background: #222; border-radius: 10px; overflow: hidden; margin-top: 10px; border: 1px solid #00ffea; }
+    .progress-fill { height: 100%; background: #00ffea; width: 0%; transition: width 0.5s; }
+</style>
+</head>
+<body>
+
+<h1>Cyberpunk Task Tracker</h1>
+
+<div class="info">
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <h2>Score: <span id="score">0</span></h2>
+    <h2>Level: <span id="level">1</span></h2>
+    <h2>Rank: <span id="rank">Bronze 3</span></h2>
+</div>
+
+<div class="task-list" id="taskList"></div>
+
+<script>
+/* ------------------ Configuration ------------------ */
+let tasks = [
+    { name: "Task 1", priority: "high", done: false },
+    { name: "Task 2", priority: "low", done: false },
+    { name: "Task 3", priority: "high", done: false },
+    { name: "Task 4", priority: "low", done: false },
+    { name: "Task 5", priority: "high", done: false },
+    { name: "Task 6", priority: "low", done: false }
+];
+
+// Load totalScore from localStorage
+let totalScore = parseInt(localStorage.getItem("totalScore")) || 0;
+
+/* ------------------ Helper Functions ------------------ */
+function getScoreForNextLevel(level) {
+    if (level === 1) return 50;
+    if (level === 2) return 70;
+    let total = 70;
+    let increment = 20;
+    let extra = 5;
+    for (let L = 3; L < level; L++) {
+        increment += 5;
+        total += increment + extra;
+    }
+    return total + increment + extra;
+}
+
+function calculateLevel(score) {
+    let level = 1;
+    while (score >= getScoreForNextLevel(level)) {
+        score -= getScoreForNextLevel(level);
+        level++;
+        if(level > 100) break;
+    }
+    return level;
+}
+
+function getRank(level) {
+    if(level <= 10) return "Bronze";
+    if(level <= 25) return "Silver";
+    if(level <= 50) return "Gold";
+    if(level <= 65) return "Platinum";
+    if(level <= 80) return "Diamond";
+    if(level <= 90) return "Master";
+    if(level <= 97) return "Elite Master";
+    if(level <= 100) return "Grand Master";
+    return "Grand Master";
+}
+
+function updateUI() {
+    document.getElementById("score").textContent = totalScore;
+    const level = calculateLevel(totalScore);
+    document.getElementById("level").textContent = level;
+    document.getElementById("rank").textContent = getRank(level);
+    const nextLevelScore = getScoreForNextLevel(level);
+    const prevLevelScore = level > 1 ? getScoreForNextLevel(level-1) : 0;
+    const progressPercent = ((totalScore - prevLevelScore)/ (nextLevelScore - prevLevelScore)) * 100;
+    document.getElementById("progressFill").style.width = progressPercent + "%";
+    // Save score in localStorage
+    localStorage.setItem("totalScore", totalScore);
+}
+
+/* ------------------ Task Handling ------------------ */
+function toggleTask(index) {
+    const task = tasks[index];
+    
+    // Adjust score immediately based on task toggle
+    if(task.done) {
+        // Undoing a done task -> subtract points
+        if(task.priority === "high") totalScore -= 20;
+        else totalScore -= 10;
+    } else {
+        // Marking as done -> add points
+        if(task.priority === "high") totalScore += 20;
+        else totalScore += 10;
+    }
+
+    task.done = !task.done;
+    renderTasks();
+    updateUI();
+}
+
+function renderTasks() {
+    const container = document.getElementById("taskList");
+    container.innerHTML = "";
+    tasks.forEach((task, i) => {
+        const div = document.createElement("div");
+        div.className = "task" + (task.done ? " done" : "");
+        div.innerHTML = `
+            <span>${task.name} [${task.priority.toUpperCase()}]</span>
+            <button class="status-btn" onclick="toggleTask(${i})">
+                ${task.done ? "Undo" : "Done"}
+            </button>
+        `;
+        container.appendChild(div);
+    });
+}
+
+/* ------------------ 12 AM Daily Reset ------------------ */
+function dailyReset() {
+    const now = new Date();
+    const lastResetDate = localStorage.getItem("lastReset");
+
+    if (!lastResetDate || new Date(lastResetDate).toDateString() !== now.toDateString()) {
+        // Reset undone tasks -> subtract points
+        tasks.forEach(task => {
+            if(!task.done) {
+                if(task.priority === "high") totalScore -= 10;
+                else totalScore -= 5;
+            }
+            task.done = false;
+        });
+
+        localStorage.setItem("lastReset", now);
+        renderTasks();
+        updateUI();
+    }
+}
+
+// Check every minute
+setInterval(dailyReset, 60 * 1000);
+
+/* ------------------ Initialization ------------------ */
+renderTasks();
+updateUI();
+</script>
+</body>
+</html>
